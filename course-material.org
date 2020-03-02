@@ -1,0 +1,1153 @@
+#+TITLE: OTP behind the scenes for Elixir developers
+
+* Description
+So you've built and deployed a Phoenix application backed by Ecto and Postgres, and come
+to the conclusion that you love it.
+
+If you are looking at progressing to the next level, this hands on training will help you
+get to the next level. In it, we will focus on building applications using OTP behaviours
+and architecture guidelines. Learn about the battle-tested abstractions needed to build
+back-end, fault tolerant systems that will run for years and scale to billions of users.
+
+** Objectives
+When you've completed this class, you will have a deeper understanding of how to architect
+back-end systems and micro-services that you can access and use from Phoenix. Learn why we
+need behaviours such as Generic Servers, Generic Finite State Machines and others, when to
+use them, and how to integrate them into supervision trees.
+
+** Requirements
+This is an intermediate level class scheduled to get you up and running with OTP. You
+should have basic knowledge of Elixir, and whilst not necessary, it would be useful if you
+have developed a Phoenix application.
+
+** Expectations
+We'll have plenty of time to work on labs along the way as you hone your skills and put
+the theory into practice. About half of the class is either lab work or coding
+side-by-side with your instructor.
+
+** Topics
+- Life before OTP (sequential/concurrent)
+- OTP architecture
+- Behaviours
+  - Supervision
+  - GenServer
+  - GenStateMachine
+  - Other behaviours (GenStage, GenFlow, Event Handlers, etc)
+- Optimizing for performance
+  - ETS (a Redis in your beam)
+- Load regulation and back-pressure (fuse, safety valve)
+
+* Course structure
+
+** Day one
+
+|-------+----------+----------------------------|
+| Start | Duration | Session                    |
+|-------+----------+----------------------------|
+|  9:00 |    01:30 | [[Life Before OTP Part One]]   |
+| 10:30 |    00:30 | Break                      |
+| 11:00 |    01:30 | [[Life Before OTP Part Two]]   |
+| 12:30 |    01:00 | Lunch Break                |
+| 13:30 |    01:30 | [[Life Before OTP Part Three]] |
+| 15:00 |    00:30 | Break                      |
+| 15:30 |    01:30 | [[Generic Servers]]            |
+| 17:00 |          | End                        |
+|-------+----------+----------------------------|
+#+TBLFM: @<<$2..@>>$2=@+1$1-$1;U
+
+** Day two
+
+|-------+----------+---------------------------------|
+| Start | Duration | Session                         |
+|-------+----------+---------------------------------|
+|  9:00 |    01:30 | [[Generic State Machines Part One]] |
+| 10:30 |    00:30 | Break                           |
+| 11:00 |    01:30 | [[Generic State Machines Part Two]] |
+| 12:30 |    01:00 | Lunch Break                     |
+| 13:30 |    01:30 | [[Erlang Term Storage]]             |
+| 15:00 |    00:30 | Break                           |
+| 15:30 |    01:30 | fourth Session                  |
+| 17:00 |          | End                             |
+|-------+----------+---------------------------------|
+#+TBLFM: @<<$2..@>>$2=@+1$1-$1;U
+
+** Day three
+
+|-------+----------+--------------------------------------------|
+| Start | Duration | Session                                    |
+|-------+----------+--------------------------------------------|
+|  9:00 |    01:30 | first session                              |
+| 10:30 |    00:30 | Break                                      |
+| 11:00 |    01:30 | Load Regulation with Fuse and Safety Valve |
+| 12:30 |    01:00 | Lunch Break                                |
+| 13:30 |    01:30 | Load Regulation with Fuse and Safety Valve |
+| 15:00 |    00:30 | Break                                      |
+| 15:30 |    01:30 | fourth Session                             |
+| 17:00 |          | End                                        |
+|-------+----------+--------------------------------------------|
+#+TBLFM: @<<$2..@>>$2=@+1$1-$1;U
+
+* Material
+** <<Life Before OTP Part One>>
+
+Elixir is build on-top of the Erlang programming language. Some say the best feature of
+Elixir is Erlang, but in itself Erlang is a small language, with very few language
+primitives. These primitives allow us to build fault-tolerant and distributed systems,
+which has been done with huge success in mission critical systems. When the engineers at
+Ericsson had gathered some experience building systems with Erlang they identified some
+patterns, and these patterns was packaged into what we now know as OTP, and has since
+become so important that you will often see Erlang written as Erlang/OTP.
+
+In this course we will look at these patterns, how they work, and how they fit together,
+and to do so we will start off by working with the language primitives.
+
+First we will look at one of the fundamental concepts that Elixir inherit from functional
+programming: Pattern matching and recursion.
+
+*** Exercise: Reimplement parts of the Enum module
+
+The Enum module contain functions that allow us to work with collections. These functions
+can be written with pattern matching and recursive functions.
+
+In the provided course material you will find an exercise folder. In the ~life-before-otp~
+folder you should find a folder called ~01-enum_lab~. This folder contain an Elixir
+project with a single module called ~EnumLab~; a handful of functions has been defined,
+such as ~EnumLab.count/1~ and ~EnumLab.member?/2~. Note you are not allowed to use the
+functions defined in the ~Enum~-module, and you are not allowed to use
+~for~-comprehensions.
+
+- Hints
+
+  A recursive function is a function that calls itself. This has the potential of creating
+  an eternal loop if the recursion will never reach a condition that break the
+  recursion. To avoid this, and to make life a lot easier it often help to identify the
+  condition that break the recursion; we call this the base case. When we have identified
+  the base case it is a trivial matter to implement the rest of the reducer where we call
+  the function itself, and often we pass in a data structure to the next iteration,
+  allowing us to build up the eventual return; this we call an accumulator (often
+  shortened ~acc~). Notice that a recursive function can have multiple base cases, and
+  multiple accumulators.
+
+  Take a recursive function that take a list and produce a list with the same elements but
+  in reverse order; we will call it ~reverse~. Our base case is the case where the list is
+  empty; in this case we will just return the accumulator. When we got that case covered
+  the recursive step is easy to cover as well.
+
+  #+BEGIN_SRC elixir
+  defmodule MyModule do
+    # Setup the initial call to the do_reverse helper
+    def reverse(list), do: do_reverse(list, [])
+
+    # Base case
+    defp do_reverse([], acc), do: acc
+
+    # Recursive step
+    defp do_reverse([element | remaining], acc),
+      do: do_reverse(remaining, [element | acc])
+  end
+  #+END_SRC
+
+  Notice, when we use a list as the accumulator, we will often have to reverse the result
+  because we build up the result by prepending elements to the head of a list—effectively
+  reversing the result—and within our EnumLab module we can of course reuse our reverse
+  function, should the need to reverse a list arise.
+
+*** Discussion
+
+  - The Erlang Virtual Machine has tail call optimization. For this to work it is
+    important that the last expression evaluated in the function body is the function
+    itself.
+
+  - Sometimes it is quicker to do non-tail recursive functions; these are called "body
+    recursive" functions.
+
+  - TODO [Show examples of body and tail recursive functions and ask the delegates which
+    ones are body recursive and which ones are tail recursive]
+
+** <<Life Before OTP Part Two>>
+
+Besides the functional foundation of Elixir there is another major component to the
+language: The process model.
+
+All code executed in your Elixir system need to get executed by a process. The process is
+the unit of computation in an Elixir system, and once the computation is done the process
+will terminate. Let's try that out; to test this we can use the ~spawn/1~ function to
+spawn a process running the input function, and we can use the functions found in the
+~Process~ module to do all kinds of introspection and otherwise work with processes; here
+we can use ~Process.alive?/1~ to ask if our process is alive, and we can use the
+~Process.sleep/1~ function within a process to keep it alive for the duration of our
+test—notice the ~Process.sleep/1~ function takes an integer as an argument which denotes
+the milliseconds the process should sleep (5000 ms is 5 seconds), and ~spawn/1~ takes a
+function the spawned process will execute:
+
+#+BEGIN_SRC elixir
+iex> pid = spawn(fn -> Process.sleep(5000) end)
+iex> Process.alive?(pid)
+true
+# then after 5000 ms has passed
+iex> Process.alive?(pid)
+false
+#+END_SRC
+
+We can communicate with the process by using the ~send/2~ function. This will send any
+term to the process. When we do so the message will end up in the mailbox of the given
+process; we can access the mailbox using the ~receive/1~ function; the ~receive/1~
+function takes a do-block as its argument, which should contain arrows with pattern
+matches on the left-hand side and the body that should be executed if the pattern match on
+the right. Considering the iex-shell is running in a process, we can use the iex shell as
+our playground (note you can get the Pid of the current process with the ~self/0~ helper.)
+
+#+BEGIN_SRC elixir
+iex> pid = self()
+iex> send pid, "Hello, Joe !"
+iex> receive do
+...>   msg -> IO.puts(msg)
+...> end
+"Hello, Joe !"
+:ok
+#+END_SRC
+
+Notice that the ~receive/1~ will return the expression it evaluates to; here it return the
+~:ok~ atom because that is what the ~IO.puts/1~ function will evaluate to after it has
+produced the text string ~"Hello, Joe !"~ by ways of a side effect.
+
+*** Exercise: Create an echo server
+
+In this exercise we will create a process that will send back the message it receives back
+to the caller.
+
+- The process should have a public interface ~start() -> pid~ which will start the echo
+  process; and a ~message(pid, term) -> :ok~ that will send the given term to the process;
+  the pid of the caller should be in the term such that the echo process knows where to
+  send the reply.
+
+  *Note*: If you are testing the process in the ~iex~ shell you can use the ~flush/0~ iex
+  helper to print and empty the mailbox of the iex session (This is only available in iex,
+  but it should be easy enough to implement using a receive if you need it outside of iex)
+
+- Implement a ~stop(pid)~ that will send a message to the process that will cause it to
+  terminate normally. You are not allowed to use the ~Process.exit/2~ function to achieve
+  this. Hint; remember that a process is terminated when it has nothing left to do.
+
+- Change the ~message(pid, term)~ function such that it becomes a blocking operation where
+  the client await the response, containing the ~term~. The function should now return the
+  ~term~ instead of the ~:ok~. Hint; Sometimes clients use receive too when it await a
+  response from the server!
+
+- Hint: When a process receive a message it has no way to tell who send it. When we want
+  to set up that relationship we will create a term, a composite data type such as a
+  tuple which include the ~Pid~ of the caller; by doing this the receiver can pattern
+  match on this term and know where to send the reply.
+
+#+BEGIN_NOTE
+This exercise should teach the delegate how to spawn a process from a module, and define a
+public interface. It will teach them to use a tail-call to keep the process alive. No
+state is needed to pass on between iterations.
+
+It should also teach the delegate that the client can implement a receive to get the
+answer back.
+#+END_NOTE
+
+*** Exercise: Create a mutex lock process
+
+Write a process that will act as a binary semaphore providing mutual exclusion (mutex) for
+processes that want to share a resource. Model your process as a finite state machine with
+two states, busy and free. If a process tries to take the mutex (by calling
+~Mutex.wait()~) when the process is in the =BUSY= state, the function call should hang
+until the mutex becomes available (namely, the process holding the mutex calls
+~Mutex.signal()~).
+
+#+BEGIN_NOTE
+This exercise is there to show the power of a selective receive as the task can be solved
+by flipping between two states, that can be described as two functions calling each other
+with each their own selective receive.
+#+END_NOTE
+
+*** Exercise: Create a job batcher process
+
+In this exercise we will build a process that batch messages into windows. The process
+will expect messages of the form ~{:task, payload}~, and ~:stop~. Once the flush message
+is received it will process the messages of the form ~{:task, payload}~ by passing the
+~payload~ to the function the batch process was initialized with.
+
+- The public interface should have a ~start/2~ function that should start the batcher
+  process; the function should take a function of arity one and an interval; an integer
+  denoting the timeout in milliseconds, and it can default to ~5_000~.
+
+  Example: ~start(&IO.inspect/1, 5_000)~
+
+  The function passed in should get used to process the messages it receive while the
+  window is "open."
+
+- The public interface should have a ~stop/1~ function that takes the pid of a batcher
+  process; when the batcher process receive the stop message it should process the
+  messages it has in its current window, and then terminate normally.
+
+- The messages should to get processed in the order they were received.
+
+- Hint :: This task can be solved with selective receives, two states, and using the ~after~
+  keyword in the receive block. ~after~ takes an integer which denotes the number of
+  milliseconds before it will "gives up," effectively a timeout, and run the code in the
+  after clause. If the timeout is set to ~0~ (zero) it will scan the mailbox once and run
+  the after clause if nothing matched.
+
+#+BEGIN_NOTE
+This task is created to make the delegate comfortable with using ~after~-timeouts in
+receive blocks, showing them that they have other use-cases than error handling. The
+exercise can be solved with two receive blocks, where both of them has a timeout.
+
+- The first receive block would simply listen for a ~:stop~ message, and its after would
+  be set for the configured interval; what that is reached it will switch to the
+  processing state, in which it will:
+
+- loop until all the ~{:task, payload}~ messages has been touched; it has a after set to
+  ~0~; when this is reached it will switch back to the batching state
+
+This exercise also show that the mailbox is a FIFO queue, and that a timeout of zero can
+be used to scan the mailbox and do an early exit if nothing is found.
+#+END_NOTE
+
+** <<Life Before OTP Part Three>>
+
+So far we have used to language primitives to spawn processes. We have used the ~send/2~
+and ~receive~ primitives to communicate between processes, and we have used tail recursive
+functions to keep our processes and process state alive.
+
+From these primitives one can build more advanced abstractions, and these abstractions can
+be used to build fault tolerant systems that will run for years, and integrate nicely with
+tooling allowing us to trace and otherwise debug our systems; during development and even
+when the system has been deployed to production. These abstractions found in the Erlang
+standard library are what we refer to as "OTP", and by using these abstractions we can
+ensure we reap the benefits of everything OTP has to offer, even in Elixir.
+
+Some of the most common abstractions found in OTP uses the concept of «behaviours». Notice
+the British spelling, «behaviour». We will use this spelling in this course! We suggest
+that you use this spelling when communicating about Erlang- and Elixir behaviours as well!
+
+Behaviours is a concept Elixir has adopted from Erlang, allowing us to take advantage of
+the battle-tested patterns already found in OTP. A behaviour defines a set of callbacks
+that a module has to implement, and it is possible to define your own behaviours; this is
+helpful when implementing an abstraction that implement a generic behavior and call into a
+callback module when a specific event happens in the generic life-cycle. By implementing
+behaviours we can let the compiler help us by emitting errors if we announce that we are
+implementing a given behaviour, but forget to implement one of the callbacks.
+
+From now on in this course we will work with the behaviours provided by OTP.
+
+TODO
+- Describe the processes we have done so far, and how they relate to GenServers
+
+** <<Generic Servers>>
+
+The Generic Server is perhaps the most utilized behaviour found in the OTP framework. It
+is an abstraction used to build the kind of client-server processes we have been tackling
+so far in this course; it handles the receive loop, the process life-cycle, and because
+they are "OTP compliant processes" we can use introspection tooling found in OTP for
+debugging and DevOps work. More on that later.
+
+In Elixir the Erlang ~:gen_server~ behaviour is called ~GenServer~, and as in Erlang they
+define callbacks allowing us to control important events in the process life-cycle. We can
+inspect the callbacks of any behaviour in Elixir by using the iex helper, ~b/1~. This will
+list all the available callbacks for a given behaviour; Open your iex session and try it
+out by running ~b GenServer~. Note that ~b/1~ is only available in an iex session, and in
+this course we will not look too deeply into the ~code_change/3~- and ~format_status/2~
+~GenServer~ callbacks.
+
+Normally, when we are about to implement a given behaviour we would use the ~@behaviour~
+module attribute to tell the system what behaviour we are implementing, but for the
+~GenServer~ Elixir defines a using-macro, invoked when we have a ~use GenServer~ in our
+module. The using macro is there to make our lives a bit easier, as the macro will expand
+to default implementations of most of the callbacks. In fact the minimal implementation
+for a GenServer in Elixir would look like this:
+
+#+BEGIN_SRC elixir
+defmodule MyGenServer do
+  use GenServer
+
+  def init(init_arg) do
+    {:ok, init_arg}
+  end
+end
+#+END_SRC
+
+This would of course do nothing, besides holding a state. It looks very similar to the
+processes we have implemented so far; abstracted away is the receive loop, which will
+handled by the ~handle_info/2~-, ~handle_cast/2~-, and ~handle_call/3~ callbacks.
+
+*** Message passing
+
+The GenServer module implement functions for passing messages into our GenServer
+implementation; these are:
+
+- ~GenServer.cast(pid, term)~ -> ~:ok~ :: which will send a asynchronous message to the
+     pid, which is a process hopefully implementing a GenServer. Notice that it will
+     always return ~:ok~, even if the process has terminated, or does not implement the
+     GenServer behaviour.
+
+     When the process that implement the GenServer behaviour receive a cast message it
+     will execute its ~handle_cast/2~ callback, which takes the input term and the current
+     GenServer loop data. You can get more information about the expected return
+     expression by querying iex for ~b GenServer.handle_cast/2~.
+
+- ~GenServer.call(pid, term)~ -> ~term~ :: which will send a synchronous message to the
+     process and block until it get a response from the GenServer process. If the process
+     does not implement a GenServer, or if it is too slow to reply the caller, the call
+     will timeout; per default the timeout is set to ~5_000~ milliseconds.
+
+     There is a ~GenServer.call/3~ which takes a timeout as its third argument; When this
+     timeout is reached the caller will get terminated with the reason ~{:timeout,
+     {GenServer, :call, [pid, term, timeout]}}~.
+
+     On the server side this will get handled by the ~handle_call/3~ callback.
+
+- ~send(gen_server_pid, term)~ :: It is possible to pass in any other message using the
+     regular ~send/2~ function, and the GenServer will handle them using the
+     ~handle_info/2~ callback. This allow us to integrate with processes and other
+     external resources that doesn't use the ~GenServer~ interface, and instead rely on
+     generic message passing. As with any callback you can get more information by using
+     the b helper in iex ~b GenServer.handle_info/2~.
+
+*** Exercise: Implement a key value data store using a GenServer
+
+TODO: work a bit more on the exercise material in the exercise folder, need tests.
+
+Implement a key value store using a GenServer.
+
+The public interface should have the following interface:
+
+- ~start()~ -> ~{:ok, pid}~ :: Start the GenServer process holding the key-value store
+- ~stop(pid)~ -> ~:ok~ :: Stop the GenServer process
+- ~insert(pid, key, value)~ -> ~:ok~ | ~{:error, :already_exist}~ :: Insert the given
+     value under the given key, but fail if there is already a value stored under the
+     given key
+- ~get(pid, key)~ -> ~{:ok, value}~ | ~:not_found~ :: Return the value stored under the
+     given key; or return a not found if the key is non existent in the data store
+- ~update(pid, key, value)~ -> ~:ok~ | ~:not_found~ :: Overwrite the value stored under
+     key
+- ~delete(pid, key)~ -> ~:ok~ :: Remove the key and its value from the data store
+
+#+BEGIN_NOTE
+This exercise is supposed to make the delegates familiar with state handling in a
+GenServer, and make them confident in dealing with message passing and replying using the
+GenServer.
+
+Delegates who already know how to make a GenServer will have no trouble with this one.
+#+END_NOTE
+
+*** Exercise: Implement a RPN calculator using a GenServer
+
+TODO: work a bit more on the exercise material in the exercise folder
+
+An RPN (Reverse Polish Notation) is a stack based calculator where tokens are stored on a
+stack. There are two kinds of tokens: operators (such as plus, minus, multiplications,
+etc) and operands (numbers). When a operator is used on the stack it will consume the
+number of operands needed and perform the operation; the result of the operation is placed
+on top of the stack.
+
+For instance; if we insert a ~1~, then a ~2~, and then a ~3~, our stack would look like
+this ~[3, 2, 1]~. If we now insert a ~+~ we it would take out the ~3~ and the ~2~, add
+them together, and put the resulting ~5~ back on the stack, making our stack look like
+this ~[5, 1]~.
+
+Your GenServer would need a suitable data structure to store the state. We suggest the
+following public interface for the implementation:
+
+- ~start()~ -> ~{:ok, pid}~ :: to start an RPN process
+
+- ~stop(pid)~ -> ~:ok~ :: request the process to shutdown
+
+- ~push_token(pid, token)~ -> ~{:ok, result}~ :: instruct the process to push a token to
+     the RPN; if the token is an operand it should just put it on the stack and return the
+     operand to the caller in an ok-tuple; if the token is a operator it should consume
+     the needed operands from the RPN stack, evaluate it, and return the result to the
+     caller, and place the result on the stack.
+
+In the exercises folder there should be a project implementing a stubbed ~RPN~ module, and
+some unit tests. The unit tests expect the above public interface, and the tests are
+tagged as skipped; remove the skip tag and implement the features one by one.
+
+#+BEGIN_NOTE
+This exercise is a rather simple one, but will serve as the foundation for when we get to
+the application/supervision exercise.
+#+END_NOTE
+
+*** Discussion
+
+- Elixir has a concept of ~Agents~. Is there ever a need for them?
+
+** TODO <<Generic State Machines Part One>>
+
+The GenServer behaviour is most often what is called for when we need to perform tasks and
+keep state around, but some problems are easier solved if we attack the problem using a
+finite state machine. The concept might now get much attention outside of Computer Science
+studies, but even if a programmer doesn't know the theory they will most often end up
+structuring their applications using patterns that approximate a state machine; so
+learning a bit about them, and familiarizing with them is quite helpful.
+
+A state machine is very helpful in situations where we have multiple states, where each of
+the states accept a given set of inputs, and we want a certain set of events to happen
+when we transition from one state to another.
+
+There is a finite state machine behaviour in OTP, it is called ~:gen_statem~, but unlike
+the ~:gen_server~ behaviour, there is no official Elixir wrapper for it. Luckily the
+community provides one called ~GenStateMachine~, which implements a ~GenServer~-like
+macro, with default implementations for callbacks, making it easy to get going with
+~:gen_statem~ in Elixir.
+
+Find the GenStateMachine on the Hex package manager:
+
+- https://hex.pm/packages/gen_state_machine
+
+Add the current version to the dependencies section of your ~mix.exs~ file, and you should
+be ready to use the GenStateMachine behaviour.
+
+GenStateMachine differs a bit from the GenServer module and behaviour we now are used
+to. While its public facing API is very similar to the GenServer, it exposes a ~cast/2~
+for asynchronous messages, and a ~call/{2,3}~ for synchronous messages. For the call
+function it is possible to define a timeout. The callbacks in the behaviour is a bit
+different from the GenServer. If we execute ~b GenStateMachine~ in a iex shell, from a
+project that has GenStateMachine as a dependency, we will not see a ~handle_call/3~, nor a
+~handle_cast/2~, etc. Instead we see a ~handle_event/4~, and a ~state_name/3~. Let's
+discuss them.
+
+First off, the GenStateMachine behaviour has two callback modes, either ~:state_functions~
+or ~:handle_event_function~, which will determine if it uses the ~handle_event/4~ or the
+~state_name/3~ when the state machine receive a message. The default mode is
+~:handle_event_function~, and thus the ~handle_event/4~ callback form will be the one that
+is used unless anything else is specified.
+
+*** The ~handle_event_function callback mode~
+
+When in the ~:handle_event_function~ callback mode the ~handle_event/4~ callback will get
+called when the state machine receive an event. Once again, we can use the iex helper
+~b/1~ to inspect the callback: ~b GenStateMachine.handle_event/4~; this will tell us that
+the callback has the signature:
+
+- ~handle_event(event_type(), event_content(), state(), data())~ :: ~:gen_statem.event_handler_result(state())~
+
+But what does ~event_type()~ mean? Luckily we can ask iex about that too by using the
+~t/1~ helper, which will give us information about types: ~t
+GenStateMachine.event_type()~. This tells us that an event type can be one of ~:cast~,
+~:info~, ~{:call, from}~, etc.
+
+- Exercise: Explore the GenStateMachine behaviour using the ~b~ and ~t~ helpers
+
+*** Transition actions
+
+The internal GenStateMachine loop is a bit different than the one we are familiar with
+from the GenServer behaviour. For instance in a GenServer, to reply to a caller, we would
+use a return expression like so ~{:reply, from, reply_msg, new_loop_data}~. The GenServer
+is very focused on building client/server relations, and its API reflect that. The
+GenStateMachine API is focused on building state machines, so the return expressions are
+more concerned with changing (or keeping) the state than anything else, such as replying
+the caller.
+
+It is possible to reply to a caller though! GenStateMachine implements the concept of
+transition actions; a list of actions that should get executed before the process enter
+its receive-loop. Using these actions it is possible to setup a reply to a caller,
+postpone the given event to the next state change, set a timeout, or inject an event; and
+because it is a list it is possible to setup multiple transition actions, which will get
+executed in the order they are specified.
+
+For instance, if we want to reply to the caller we could implement the return expression
+such as this:
+
+#+BEGIN_SRC elixir
+def handle_event({:call, from}, event_term, _current_state, loop_data) do
+  transition_actions = [
+    {:reply, from, {:you_called_with, event_term}}
+  ]
+  {:keep_state, loop_data, transition_actions}
+end
+#+END_SRC
+
+*** Exercise: Mutex Redux
+
+The mutex we implemented earlier using functions and receive loops was in reality a simple
+state machine, but in the earlier implementation we used functions to represent the
+states, and a selective receive to control what input we accepted in the given "state."
+
+In this exercise we want to reimplement the Mutex using the GenStateMachine behaviour.
+
+The clients should be able to request the lock, if it is free they should get it, and the
+mutex should await a signal from the process who has the lock; processes trying to take
+the lock while it is given to another process will be blocked until it is available and it
+is their turn.
+
+- Extra: Create a state timeout such that a process cannot hold on to the lock forever
+  - The process that hold on to the lock for too long should get terminated
+
+**** Discussion
+
+- Is it reasonable to terminate a process that holds on to the lock for too long?
+- How to best terminate the process; will the ~terminate/3~ callback be called if the
+  state machine is terminated with ~Process.exit/2~ ?
+
+** <<Generic State Machines Part Two>>
+
+A very handy feature of the GenStateMachine is its support for various timers that can be
+reacted upon. Where the GenServer behaviour only support one kind of timeout, the
+GenStateMachine support three, and they differ in what causes them to be canceled:
+
+- Event :: which will trigger if no event has been received within the time, and will get
+           canceled if the state machine receive any event; this is similar to the
+           GenServer timeout.
+
+- State :: which will trigger if the state does not change within a given amount of time,
+           and will automatically get canceled if the state does change. This can also be
+           canceled if the timeout is overwritten with the value ~:infinity~.
+
+- Generic :: which is a timeout that will not automatically get canceled. The only way to
+             cancel it is to overwrite it with the value ~:infinity~.
+
+Timeouts are set using transition actions and are handled by the ~handle_event/4~
+callback. The transition action is a three tuple of the form:
+
+#+BEGIN_SRC elixir
+{event_type, timeout_ms, event_name}
+#+END_SRC
+
+Where ~event_type~ is one of ~:timeout~ (for event timeouts), ~:state_timeout~, and
+~{:timeout, term}~ (for a generic timeout). The second position is a non negative integer,
+which denotes the length of the timeout in milliseconds, and finally the ~event_name~ is
+the event name that will get passed into the handle event callback when the timeout is
+triggered.
+
+- ~handle_event(:timeout, :my_event_name, _state, _loop_data)~ :: triggered when an event
+     timeout created as a transition action is triggered ~{:timeout, 5_000,
+     :my_event_name}~.
+
+- ~handle_event(:state_timeout, :my_event_name, _state, _loop_data)~ :: triggered when a
+     state timeout generated from a transition action of the form ~{:state_timeout, 5_000,
+     :my_event_name}~.
+
+- ~handle_event({:timeout, :my_timeout}, :my_event_name, _state, _loop_data)~ :: triggered
+     when a generic timeout generated from a transtion action of the form ~{{:timeout,
+     :my_timeout}, 5_000, :my_event_name}~. As previously mentioned, this type of timeout
+     will not get canceled automatically, so one has to do that manually by overwriting it
+     like this ~{{:timeout, :my_timeout}, :infinity, :my_event_name}~; when postponing a
+     timeout into infinity it will get deleted by the GenStateMachine, this works for
+     state timeouts as well.
+
+For all the examples ~:my_event_name~ could be any term, and ~:my_timeout~ in the generic
+timeout example could be any term as well, not just atoms.
+
+*** Exercise Turnstile
+
+A classic example when showing off the capabilities of a finite state machine is
+implementing a Turnstile. You often find turnstiles at amusement parks or at the entrance
+of public transportation systems. It is a one way door, which is closed until a valid
+token has been inserted; once unlocked, a person can enter the turnstile and once the
+person walks through the gate the turnstile will return to the closed state, accepting
+tokens.
+
+Before you try to solve the exercise: Try to draw the states, and the inputs accepted in
+the given states, that a psychical turnstile would have as a state-machine diagram using a
+pen and paper. What would happen if you insert a token while the turnstile is open?
+
+Implement a turnstile using the GenStateMachine behaviour with the following suggested
+public interface:
+
+- ~start()~ -> ~{:ok, pid}~ :: Start the turnstile
+
+- ~stop(pid)~ -> ~:ok~ :: Stop the turnstile
+
+- ~insert_token(pid)~ -> ~:ok~ :: Insert a token into the turnstile. The turnstile should
+     accept the token regardless of the state it is in. In other words; if the turnstile
+     is already unlocked it should just accept the token.
+
+- ~enter(pid)~ -> ~:ok~ | ~{:error, :access_denied}~ :: Enter the turnstile if it is
+     unlocked, and respond with "access denied" if it is locked
+
+Tip: The turnstile would have at least two states: =Locked= and =Unlocked=. While in the
+=Locked= state it should accept a =token=, which will transition the turnstile into the
+=Unlocked= state. In the =Unlocked= state it should accept a =enter= input, that will
+transition the state machine back to the =Locked= state.
+
+*** Exercise: Turnstile Part 2
+
+Our turnstile from the last exercise would just eat the coin if a token had been inserted
+while the turnstile was =unlocked=. We have had complaints from some users, and all of a
+sudden it has become a priority to implement means of returning tokens to the user.
+
+Implement a coin return, which will allow the turnstile to give tokens back to the user.
+
+- When a token is inserted while the turnstile is in the unlocked state the token should
+  go directly to the coin return.
+
+- Implement a public function called ~cancel(pid)~ -> ~:ok~. If the turnstile is unlocked
+  it will return the token to the coin return; if it is locked it will do nothing
+
+- Implement a public function called ~empty_coin_return(pid)~ -> ~{:ok, [tokens]}~ which
+  will yield a list of tokens if there was tokens in the coin return, and an empty list if
+  the coin return was empty. For now we will just place the atom ~:token~ in the coin
+  return when we return tokens to the user.
+
+Hint: You will have to store the coin return in the Turnstile loop data. The most reliable
+way of doing this is to keep it as a list, and push the token to the coin return list when
+the turnstile is canceled, or another token is inserted, while in the =unlocked=
+state. After the coin return is emptied it should get reset to an empty list in the loop
+data.
+
+*** Exercise: Turnstile Part 3
+
+We would like to update the turnstile such that we can set the price of admission.
+
+Instead of accepting simple tokens, we would like to accept coins with a value, which will
+be represented as a two-tuple: ~{:coin, <positive integer>}~. The turnstile, while in the
+=locked= state, should accept coins until the cost of entry has been reached. If more
+coins are inserted they should go to the coin return.
+
+- The cost of entry should be a configuration option passed in when starting the turnstile
+  process, and it should be kept in the state. This will be used for comparing the paid
+  amount to the total cost when deciding if the turnstile should open. Call the option
+  ~entry_price~, and let it default to ~1~.
+
+- Change the ~insert_token/1~ function to a ~insert_token/2~, which accept a single coin
+  ~{:coin, value}~. For backwards comparability you can add a default value; a coin with
+  the value of one: ~def insert_token(pid, coin \\ {:coin, 1}) do … end~. Remember to
+  update the ~handle_event/4~ callbacks accepting tokens.
+
+- Make sure the coin return, return the same coins that was inserted; when returning the
+  coins it should happen in the reverse order of insertion.
+
+Hint: Be sure to consume the payment once the user enter the turnstile such that we can
+return the money if they pay the exact amount but choose to hit cancel instead of
+entering.
+
+*** Exercise: Turnstile Part 4
+
+Now that we can insert coins, and we can get the coins back if we pay too much, or cancel,
+we would like the turnstile to automatically lock itself after a set timeout.
+
+- Implement a state timeout on the =unlocked= state that will return the payment money to
+  the coin return and transition the turnstile into the =locked= state. The timeout should
+  be a configuration option, called ~unlock_timeout~, and it should get passed in during
+  initialization and stored in the process state.
+
+Hint: By passing in the time out as a configuration option it is much easier to test the
+timeouts, as we can set it to zero and have the timeout trigger instantly.
+
+*** Discussion
+
+- When would we prefer to use a GenStateMachine over a GenServer?
+
+** <<Erlang Term Storage>>
+
+While message passing is good for linearizability and serialization it also comes with the
+danger of introducing bottlenecks to a system if many processes need to access information
+stored in a single process. To get a round this problem OTP has a trick up its sleeve:
+Erlang Term Storage, or ETS for short.
+
+While ETS is often used in Elixir, and even in Elixir core itself, there are no wrappers
+around the Erlang interface, so to use ETS from Elixir we will have to use the Erlang
+interface.
+
+The canonical documentation for ETS can be found in the Erlang/OTP documentation here:
+http://erlang.org/doc/man/ets.html, and it is a good resource, but for now we will
+continue with a crash course in ETS.
+
+Try creating an ETS table in an iex session by typing:
+
+#+BEGIN_SRC elixir
+iex> table = :ets.new(:my_table, [:set, :named_table])
+#+END_SRC
+
+This will create a named table, meaning we can reference it by the name we passed in as
+the first argument; we also inform ETS that we want our table to be of the type set. This
+allow us to store an element with a given key once.
+
+The values inserted into the ETS table should be in the form of tuples; the number of
+elements doesn't matter; it can be 1 to n; and the tuples inserted doesn't need to have
+the same number of elements in them, the important thing is that the number of elements in
+the tuple stored is at least as big as the configured "key position." The key position
+defaults to one and can be set during initialization of the ETS table by passing in a
+~{:keypos, n}~ option, where ~n~ is a positive integer bigger than 0.
+
+#+BEGIN_SRC elixir
+iex> true = :ets.insert(:my_table, {:foo, :bar})
+#+END_SRC
+
+ETS supports a handful of ways of getting data out of a table. The simplest one is to get
+an element out by referencing the key:
+
+#+BEGIN_SRC elixir
+iex> :ets.lookup(:my_table, :foo)
+[{:foo, :bar}]
+#+END_SRC
+
+Notice that you get the entire element out, including the key. We also get the result as a
+list because other configurations of the ETS table allows us to store the same key twice
+(such as the ~:bag~ option), but for the default storage option, ~:set~, we will only be
+able to store a given key once. Notice that we will get an empty list if no match is
+found.
+
+Another option for looking up elements is the slightly more complicated ~:ets.match/2~
+which takes a pattern allowing us to specify the shape of the match. The pattern is
+slightly similar to the regular pattern matches we are used to, but because we need to
+pass it in as a data structure there are some limitations and subtle differences:
+
+- Where we would usually just specify an underscore (~_~) when we don't care about the
+  value in a given position, we need to use the atom-underscore (~:_~) instead.
+
+- As with regular pattern matches literals can be used; except for the atoms ~:_~, and
+  ~:"$n"~ (where ~n~ is a positive integer) which has special meaning.
+
+- Capturing a term in a variable is limited to atoms of the form ~:"$n"~ where ~n~ is an
+  integer equal to, or bigger than zero. In other words; we cannot capture a term into a
+  named variable, we can only specify at which position in the return list the variable
+  will go (We can easily pattern match on the returned list, so it is not a big
+  problem). We can do comparison between two positions in the pattern match by specifying
+  the same number twice, i.e. ~{:"$1", :"$1"}~ will return 2 tuples that has the same
+  value in position one and two.
+
+- The returned value will be a list where the elements correspond to the numbers given in
+  the match specification.
+
+Quite a mouthful! Let's try all that out:
+
+#+BEGIN_SRC elixir
+# First we store some values we can match on
+iex> data = [{:foo, :bar, :baz}, {:bar, :foo, :baz}, {:baz, :bar, :bar}]
+iex> :ets.insert(:my_table, data)
+true
+iex> :ets.match(:my_table, {:foo, :"$1", :"$2"})
+[[:bar, :baz]]
+# Notice the order of the elements in the returned expression correspond to the
+# numbers specified in the :"$n" specififations; if we change the order the
+# return will change accordingly
+iex> :ets.match(:my_table, {:foo, :"$2", :"$1"})
+[[:baz, :bar]]
+# Now let's try to ignore variables using :_
+iex> :ets.match(:my_table, {:_, :"$0", :_})
+[[:bar], [:bar], [:foo]]
+# ...and finally, let's try to find the element that has the same value on
+# position 2 and 3 (notice tuples are 1-indexed)
+iex> :ets.match(:my_table, {:"$0", :"$1", :"$1"})
+[[:baz, :bar]]
+# Which gives us :baz (which has :bar on the second and third position)
+#+END_SRC
+
+A third option of querying data is the ~:ets.select/2~ function which gives us the a bit
+more power to our queries, as we can define a set of guards that filter the returned
+values, and we can better specify the shape of the returned entries. This all comes at the
+cost of a higher complexity in defining the match specifications.
+
+The ~:ets.select/2~ will take the table and a tuple with an arity of 3. The tuple describe
+a pattern match (as we got familiar with from the ~:ets.match/2~ function), a list of
+guard statements, and a specification of how we want the returned matches shaped.
+
+#+BEGIN_SRC elixir
+iex> data = [{:chocolate, 2}, {:vanilla, 5}, {:coffee, 10}, {:tea, 7}]
+iex> true = :ets.insert(:my_table, data)
+iex> pattern = {:"$0", :"$1"}
+iex> guards = [{:is_integer, :"$1"}, {:"=<", :"$1", 5}]
+iex> return = [:"$0"]
+iex> :ets.select(:my_table, [{pattern, guards, return}])
+[:chocolate, :vanilla]
+#+END_SRC
+
+Notice that we can choose to not return the ~:"$1"~ variable in the return; we choose to
+omit the integer value, and only return the atoms; ~:ets.select/2~ allow a bit more wiggle
+room when it comes to what we return. The guards allow us to make simple tests, and filter
+the results that does not conform to them. Also notice how the guard tests uses prefix
+notation—it kind of looks like a Lisp!—if you don't need any guards for your select you
+can of course leave the guards as an empty list.
+
+*** Exercise: A key-value data store backed by ETS
+
+Implement a key-value data store backed by ETS. The key-value store should have a public
+interface allowing the user to:
+
+- ~start()~ -> ~{:ok, pid}~ :: Start the process holding the key-value store
+- ~stop(pid)~ -> ~:ok~ :: Stop the process
+- ~insert(pid, key, value)~ -> ~:ok~ | ~{:error, :already_exist}~ :: Insert the given
+     value under the given key, but fail if the given key already exists
+- ~get(pid, key)~ -> ~{:ok, value}~ | ~:not_found~ :: Return the value stored under the
+     given key; or return a not found if the key is non existent
+- ~update(pid, key, value)~ -> ~:ok~ | ~:not_found~ :: Overwrite the value stored under
+     key
+- ~delete(pid, key)~ -> ~:ok~ :: Remove the key and its value from the data store
+
+In the =database= folder in the exercises you will find a stubbed out project that
+implement some unit tests that can aid you in building the database. The tests had been
+tagged with the skip tag; remove this to enable the tests, one by one, and start
+implementing the feature.
+
+**** Discussion
+
+- This exercise can be solved using either a protected or a public ETS table. What are the
+  upsides (and down sides) to configuring the ETS table as protected?
+
+- What are the upsides (if any) of configuring the ETS table as public?
+
+- What are the performance tuning we can perform to the table if it is public?
+
+*** TODO Exercise: Create a caching layer with two generations
+
+[todo, need to work a bit on the exercise material on this one]
+
+Implement a cache with two layers of generations.
+
+Our cache will have two ETS tables; When an element is requested from the resource we
+will:
+
+- Ask the ETS table that is marked as the current generation, and serve the response from
+  here if it exist
+- If it does not exist in the first layer we will ask the ETS table marked as the old
+  generation; if found we will send this as a response to the client, and copy it to the
+  current generation
+- If found in neither the current or old generation we will ask the resource for the
+  value, and cache the value in the current generation
+
+On an interval we will start a new generation; when this happens we will delete the ETS
+table storing the old generation and make the current ETS table the "old generation",
+moving it down one layer.
+
+A resource that mock some heavy work is provided in the application.
+** TODO <<Application and Supervision>>
+
+So far we have been implementing processes using the GenServer and GenStateMachine OTP
+behaviours. We have been starting them ourselves from tests and the iex shell, but now it
+is time to define our own applications, which will allow us to start and stop our
+processes as a coherent whole.
+
+We have been discussing process life-cycles; from initialization to the receive loop, and
+eventually arriving at terminating; and as with anything an application has a life-cycle
+too, and this life-cycle has been captured in a behaviour called ~Application~. As with
+any behaviour we can inspect it from the iex shell with the ~b~ and ~t~ helpers.
+
+Switch to your iex shell and try executing ~b Application~ and get familiar with the
+callbacks and their types.
+
+Application also implement a using macro, which defines default no-op functions for
+everything but the ~start/2~ callback which is mandatory, and its task is to start a
+process, which is most commonly a Supervisor, and this is exactly what we see if we create
+a new application using the ~--sup~-flag; ~mix new my_app --sup~.
+
+#+BEGIN_SRC elixir
+# my_app/lib/my_app/appplication.ex
+defmodule MyApp.Application do
+  @moduledoc false
+
+  use Application
+
+  def start(_type, _args) do
+    children = [
+      # {MyApp.Worker, arg}
+    ]
+
+    opts = [strategy: :one_for_one, name: MyApp.Supervisor]
+    Supervisor.start_link(children, opts)
+  end
+end
+#+END_SRC
+
+The supervisor is yet another behaviour ... todo
+
+In the following exercises we will use everything we have learned so far in this course.
+
+*** Exercise a supervised reverse polish notation calculator
+
+Earlier in the course you build a GenServer that implement a reverse polish notation
+calculator. There are cases that could cause the calculator to crash, for instance when we
+try to divide by zero, and in those cases we would like a new calculator to get started.
+
+- The folder [insert folder here] contains the regular project scaffold you would get from
+  typing ~mix new rpn_service --sup~. Add the RPN calculator to the Application
+  supervision tree, and register it under the an atom
+
+Try crashing the calculator process. A new one should take its place, but the stack would
+be lost. We will deal with that later.
+
+*** Multiple calculators
+
+Continued from the previous exercise. So far we have an application that start a RPN
+calculator process supervised by the application supervisor. We would like to be able to
+run multiple calculator processes. We will do this with a DynamicSupervisor.
+
+- Remove the current calculator process from the application Supervisor
+- Add a named DynamicSupervisor to the application supervisor
+- Create a helper that will spawn a calculator process under a name passed in as an option
+
+*** TODO Registry
+
+todo
+
+*** Add fault tolerance
+
+We now have an application that can run multiple, named calculators. Should a given
+calculator crash it will get restarted by the DynamicSupervisor. We have a problem though:
+When a calculator restart it will have forgotten its state. Let's fix that.
+
+- Implement a process that create an ETS table that can contain the inputs given to a
+  calculator. It should be configured to be a named, public, and ordered set. Every time a
+  calculator accept an input it should record this to the ETS table with the key
+  ~{calculator_name, sequence_id}~ and the value should be the input.
+
+  Hint: Our calculator process needs to keep track of the sequence number when it accept a
+  token. The process holding the ETS table should be supervised by the top level
+  supervisor.
+
+- When a calculator initialize it should query the log for entries belonging to it, and
+  replay the steps to rebuild its state. Notice; if there is no entries in the log for the
+  given name it means that it is a new session.
+
+- If a calculator terminate normally it should scrub its entries from the log. Hint, use
+  ~:ets.match_delete/2~.
+
+This will allow us to query the ETS backed log for the presence of a previous state when
+we start a calculator under a given name, and replay them during the process
+initialization.
+
+Note: Make sure to only record a token when it is successful; this will avoid replaying
+faulty input when we recover—otherwise we would end up in a crash-loop.
+
+** <<Load regulation>>
+
+One of the advantages of the Erlang Virtual Machine is its predictable behavior when
+running under load. This is mostly due to its preemptive scheduler, which will freeze a
+given process if it runs for too long, and work on something else for a while before
+picking up where it left. This ensures no process can starve the system for CPU and
+resources; the server will still be able to respond to requests, in a timely manner, even
+when the server is under heavy load.
+
+But the preemptive nature cannot save us from all workload related problems. We can still
+end up in situations where a system becomes unstable because of the sheer amount of work
+it need to perform. Besides buying a bigger machine there are strategies we can use to
+control a huge workload. Each comes with their own set of pros and cons. Notice that most
+systems will see spikes of workload, some will have a constant load, while others will
+idle most of the time.
+
+# back pressure
+
+The first topic we need to discuss is back-pressure. Back-pressure is a means of
+controlling flow of incoming messages and somehow communicate upstream, and the simplest
+way of doing this is to simply block, and not accept more messages. This means the default
+behavior for message passing in the Erlang Virtual Machine, asynchronous, can lead us into
+trouble, as using asynchronous calls only tell us that the message has entered the system;
+there is no other feedback. The process sending a message cannot know if the receiver is
+overloaded, and to make matters worse, the process mailboxes are unbounded queues, so the
+mailbox will potentially just receive messages until the entire node runs out of memory.
+
+- Note :: We actually have a means of achieving bounded queues for our process mailboxes
+          as we can configure the node to have a maximum amount of ram allowed for a
+          process mailbox. If this is reached the process will get terminated. See the
+          ~max_heap_size~ flag.
+
+Luckily, we do have means of setting up synchronous calls by implementing request-reply
+patterns. The calling process would setup a receive after sending. This receive will
+expect a response from the server; by doing so the caller would get blocked until it get a
+response, and if we add a timeout we would have a means of getting rid of load until the
+system is stable again, simply by letting the calling processes crash. This is exactly
+what the ~.call/2,3~ functions for most of the OTP behaviours implement; most of the
+default timeouts are 5 seconds. This, of course, comes at the cost of limited concurrent
+work, and the overall system will get slowed down during peaks.
+
+# work shedding
+
+This is "work shedding," which is the second important concept when dealing with heavy
+workload. We effectively throw work away until the system stabilizes, and we can continue
+normal operation once the traffic spike is over. Notice, while this might sound horrible,
+most other programming languages would just roll over and not serve any responses at all.
+
+Wherever we can, we should strive to design our systems to avoid bottlenecks, which can be
+harder said than done when we, as we often do, rely on a shared state hidden behind a
+shared resource.
+
+While the standard distribution only provides back pressure by means of synchronous calls,
+it does provide the primitives to build more sophisticated back pressure schemes that
+solve problems with load handling, and the community has provided such solutions and made
+them available on the Hex package manager. We will in the upcoming sections discuss some
+of the load regulation techniques we can use to handle spikes.
+
+*** Pooling
+
+A pattern often used to deal with a limited resource is to estimate how much load the
+resource can handle, and set up a pool from which processes can get permission to access
+the resource.
+
+While this protects the external resource from too many simultaneous requests it has its
+drawbacks. A pool is a FIFO queue, and it suffers from the same ahead of line blocking
+issues as a regular mailbox queue does. Even worse, some implementations does not
+implement a timeout on to a token before it put it back into the pool, so during traffic
+spikes it is often seen that processes timeout before they get time because other
+processes are holding on to the resource, and the calling processes will own the crash.
+
+*** Circuit breakers
+
+The circuit breaker pattern takes it inspiration from electrical circuits, where its task
+is to break if too much current is passed through; when the circuit breaker is broken no
+more current can pass through to the other parts of the circuits and course more damage.
+
+When we implement this strategy in a system we will setup a process that manage the
+circuit breaker state for the given resource; before posting a request to the resource the
+calling process will check the state of the circuit breaker, and only proceed to post to
+the resource if the circuit breaker respond with unbroken. Should the process receive an
+error code from the shared resource, we would tell the circuit breaker to "melt" a
+bit. The circuit breaker will keep track of the melts it has seen, and should it exceed
+the configured amount of melts per minute it will flip into the broken state, and stay
+there for a given amount of time before resetting, allowing the shared resource to
+re-stabilize.
+
+While the circuit breaker is healing from the broken state, a good circuit breaker
+implementation would allow a limited amount of requests to pass through to the shared
+resource, and gradually increase the number of requests it let through. The remaining
+requests would still get the broken status. This is done to avoid a thundering horde
+taking down the shared resource once when it comes back up, as it might be in the process
+of warming a cache, or some other heavy load.
+
+It is important to note: The circuit breaker should only get melted when the cause of the
+failure is a connection error. Not being able to find a given record in a database should
+not be a reason to melt, nor should a HTTP client receiving a 404. But, it would be
+reasonable to track response times on the remote system and melt if the response time
+reach a given threshold, as a growing response time could be an indicator of trouble.
+
+From the community there is a good circuit breaker implementation called Fuse, which is
+available on Hex: https://hex.pm/packages/fuse
+
+Included in the "load-regulation" exercise folder in the course material there is a lab
+exercise called "circuit-breaker". This includes a project containing a GenServer that
+serves as a limited, shared resource. Look into the implementation in the ~CircuitBreaker~
+module; and try to get it to blow the circuit breaker from the iex session by calling
+~CircuitBreaker.request_limited_resource/0~.
+
+You can play around with the configuration in project ~config/config.exs~ file and see how
+the circuit breaker behaves.
+
+*** TODO Rate limiting
+
+Another approach is to add a capacity probe on the system and let that inform the amount
+of work will get passed through or happen simultaneously. The probe can be anything that
+can get measured; memory usage, CPU load, how long it takes for messages to leave a queue
+after they have been placed on them, etc.
+
+Like the circuit breaker a rate limiter will sit between the caller and the shared
+resource. It will function as a queue, but it will start shedding work when its probe
+reach the configured threshold.
+
+Lab Exercise: safety valve
+
+In the handling-overload folder in the exercises there is a project called
+"limited-resource". This contains a lab exercise that uses the ~safetyvalve~ library,
+which implement a rate limiter. The test file in the project implement a test bed for
+testing out configurations for the safetyvalve project. Try changing the values in both
+the test file and the ~config/config.exs~ file.
+
+*** Pull based
+
+For some problems it makes more sense to turn the problem upside down, and create a
+producer/consumer pattern. In this pattern we will have multiple consumers request work
+from producers, which will source the work from the shared, limited resource. The key here
+is that consumers will ask producers for work, so the consumers are in charge of the
+incoming load, and we can add as many consumers as our system can handle.
+
+This approach is well known in the Elixir community because of the excellent GenStage
+framework.
+
+The downside to this approach is that, while consumers cannot be overrun, producers can
+still queue up more work than then producers can handle, so perhaps it would still be
+beneficial to shed work in one stage if the work build up faster than the consumers can
+handle it.
+
+Lab Exercise: Supply and demand

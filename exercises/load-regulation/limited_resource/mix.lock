@@ -1,0 +1,5 @@
+%{
+  "goldrush": {:hex, :goldrush, "0.1.9", "f06e5d5f1277da5c413e84d5a2924174182fb108dabb39d5ec548b27424cd106", [:rebar3], [], "hexpm"},
+  "lager": {:hex, :lager, "3.5.2", "614a8c8f67bf99b69eb264ea22121ad25511c055aaec09b086773d5108c6767f", [:rebar3], [{:goldrush, "0.1.9", [hex: :goldrush, repo: "hexpm", optional: false]}], "hexpm"},
+  "safetyvalve": {:hex, :safetyvalve, "2.5.2", "f5dc62a01b92e389f4e44bddb349b7498af5ab92d54915c6ba7b819e7c96fe3c", [:rebar3], [{:lager, "~>3.5.2", [hex: :lager, repo: "hexpm", optional: false]}], "hexpm"},
+}
