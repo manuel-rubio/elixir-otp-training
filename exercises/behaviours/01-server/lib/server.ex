@@ -3,7 +3,7 @@ defmodule Server do
   Implementation of a Server
   """
 
-  def __using__(_) do
+  defmacro __using__(_) do
     quote do
       @behaviour Server
       @impl Server

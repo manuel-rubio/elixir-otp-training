@@ -6,9 +6,7 @@ defmodule Frequency do
   mobile systems.
   """
 
-  # because of the way of compilation for behaviours, we have to
-  # write this here:
-  @behaviour Server
+  @type freq :: non_neg_integer
 
   # the hardcoded data:
   @frequencies [10, 11, 12, 13, 14, 15]
@@ -30,7 +28,7 @@ defmodule Frequency do
   Allocate a frequency. It performs a call to the Server providing the message
   which will be handle by this module.
   """
-  @spec allocate() :: {:ok, non_neg_integer} | {:error, :no_frequencies}
+  @spec allocate() :: {:ok, freq} | {:error, :no_frequencies}
   def allocate(), do: Server.call(__MODULE__, {:allocate, self()})
 
   @doc """
@@ -38,21 +36,21 @@ defmodule Frequency do
   It performs a call to the Server providing the message which will be handle
   by this module.
   """
-  @spec deallocate() :: :ok
+  @spec deallocate(freq) :: :ok
   def deallocate(freq), do: Server.call(__MODULE__, {:deallocate, freq})
 
   @doc """
   Retrieve a list of allocated frequencies. It performs a call to the Server
   providing the message which will be handle by this module.
   """
-  @spec list_allocated() :: [{non_neg_integer, pid}]
+  @spec list_allocated() :: [{freq, pid}]
   def list_allocated(), do: Server.call(__MODULE__, :list_allocated)
 
   @doc """
   Retrieve a list of available frequencies. It performs a call to the Server
   providing the message which will be handle by this module.
   """
-  @spec list_available() :: [non_neg_integer]
+  @spec list_available() :: [freq]
   def list_available(), do: Server.call(__MODULE__, :list_available)
 
   @impl Server
