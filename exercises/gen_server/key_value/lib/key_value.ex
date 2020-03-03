@@ -2,8 +2,8 @@ defmodule KeyValue do
   use GenServer
 
   # Client API
-  def start() do
-    GenServer.start(__MODULE__, :na)
+  def start_link(args) do
+    GenServer.start_link(__MODULE__, args)
   end
 
   def stop(pid) do
