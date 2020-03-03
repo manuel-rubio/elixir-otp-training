@@ -5,6 +5,7 @@ defmodule Frequency do
 
   ## API Calls (calling from Client process)
   def start(), do: Server.start(__MODULE__, [])
+  def stop(), do: Server.stop(__MODULE__)
   def allocate(), do: Server.call(__MODULE__, {:allocate, self()})
   def deallocate(freq), do: Server.call(__MODULE__, {:deallocate, freq})
 

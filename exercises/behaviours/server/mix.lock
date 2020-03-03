@@ -1,0 +1,5 @@
+%{
+  "recon": {:hex, :recon, "2.5.0", "2f7fcbec2c35034bade2f9717f77059dc54eb4e929a3049ca7ba6775c0bd66cd", [:mix, :rebar3], [], "hexpm", "72f3840fedd94f06315c523f6cecf5b4827233bed7ae3fe135b2a0ebeab5e196"},
+  "redbug": {:hex, :redbug, "1.2.1", "9153ee50e42c39ce3f6efa65ee746f4a52896da66862cfb59e7c0f838b7b8414", [:rebar3], [], "hexpm", "bfc7bcb8743c55dbe0134dbcb89dd6a57606288cc4e2570eccd701061fbcbd93"},
+  "rexbug": {:hex, :rexbug, "1.0.4", "b9908d95da835c7353ef051bc587662c9054fa3c0c11e96de9bad7fe18460aad", [:mix], [{:mix_test_watch, ">= 0.5.0", [hex: :mix_test_watch, repo: "hexpm", optional: true]}, {:redbug, "~> 1.2", [hex: :redbug, repo: "hexpm", optional: false]}], "hexpm", "4826565f39e617fa0eea3e916f02928b2f1d880bf5e084cb80da86a3e369390e"},
+}
