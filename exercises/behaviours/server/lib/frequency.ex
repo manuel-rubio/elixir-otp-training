@@ -3,6 +3,8 @@ defmodule Frequency do
   @behaviour Server
   @frequencies [10, 11, 12, 13, 14, 15]
 
+  ## API Calls (calling from Client process)
+  def start(), do: Server.start(__MODULE__, [])
   def allocate(), do: Server.call(__MODULE__, {:allocate, self()})
   def deallocate(freq), do: Server.call(__MODULE__, {:deallocate, freq})
 

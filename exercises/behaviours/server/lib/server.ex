@@ -27,7 +27,7 @@ defmodule Server do
   def stop(pid), do: send(pid, :stop)
 
   def init(module, args) do
-    state = apply(module, :init, args)
+    state = apply(module, :init, [args])
     loop(module, state)
   end
 
@@ -35,7 +35,7 @@ defmodule Server do
     receive do
       {:request, pid, message} ->
         {state, reply} = apply(module, :handle, [message, state])
-        send(pid, reply)
+        send(pid, {:reply, reply})
         loop(module, state)
       :stop -> :ok
     end
