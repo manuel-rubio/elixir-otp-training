@@ -8,6 +8,8 @@ defmodule Frequency do
   def stop(), do: Server.stop(__MODULE__)
   def allocate(), do: Server.call(__MODULE__, {:allocate, self()})
   def deallocate(freq), do: Server.call(__MODULE__, {:deallocate, freq})
+  def list_allocated(), do: Server.call(__MODULE__, :list_allocated)
+  def list_available(), do: Server.call(__MODULE__, :list_available)
 
   @impl Server
   def init(_args) do
@@ -20,6 +22,12 @@ defmodule Frequency do
   end
   def handle({:deallocate, freq}, frequencies) do
     {deallocate(frequencies, freq), :ok}
+  end
+  def handle(:list_allocated, {_, allocated} = frequencies) do
+    {frequencies, allocated}
+  end
+  def handle(:list_available, {available, _} = frequencies) do
+    {frequencies, available}
   end
 
   defp allocate({[], _} = frequencies, _pid) do
