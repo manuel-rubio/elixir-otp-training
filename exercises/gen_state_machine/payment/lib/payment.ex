@@ -4,6 +4,8 @@ defmodule Payment do
     :state_enter
   ]
 
+  @timeout_each_step 10_000
+
   def start(), do: GenStateMachine.start(__MODULE__, [])
   def get_order(pid), do: GenStateMachine.call(pid, :get_order)
   def set_creds(pid, name), do: GenStateMachine.cast(pid, {:set_creds, name})
@@ -52,6 +54,15 @@ defmodule Payment do
   def handle_event(:enter, old, :paid, _data) when old in [:pay_by_card, :pay_by_account] do
     IO.puts("Paid!")
     :keep_state_and_data
+  end
+  def handle_event(:enter, _old, _new, _data) do
+    actions = [{:state_timeout, @timeout_each_step, :go_away}]
+    {:keep_state_and_data, actions}
+  end
+
+  def handle_event(:state_timeout, :go_away, _state, _data) do
+    IO.puts "Time is over!"
+    {:stop, :normal}
   end
 
   def handle_event(_type, _content, _state_name, _state_data) do
