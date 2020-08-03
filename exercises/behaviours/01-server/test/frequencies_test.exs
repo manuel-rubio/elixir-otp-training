@@ -14,18 +14,24 @@ defmodule FrequencyTest do
   """
 
   describe "Frequency tests" do
+    setup do
+      Frequency.start()
+      on_exit(fn _ ->
+        :stop = Frequency.stop()
+      end)
+      :ok
+    end
+
     @doc """
     The test allocation is retrieving all of the known frequencies
     from the system. We know we have a list from 10 to 15 and then
     we are run out of frequencies.
     """
     test "Test allocation" do
-      Frequency.start()
       for i <- 10..15 do
         assert {:ok, i} == Frequency.allocate()
       end
       assert {:error, _} = Frequency.allocate()
-      assert :stop = Frequency.stop()
       :ok
     end
 
@@ -36,7 +42,6 @@ defmodule FrequencyTest do
     is the original one so, that means it worked.
     """
     test "Test deallocation" do
-      Frequency.start()
       for i <- 1..5 do
         assert :ok == Frequency.deallocate(i)
       end
@@ -44,7 +49,6 @@ defmodule FrequencyTest do
         assert {:ok, i} == Frequency.allocate()
       end
       assert {:ok, 10} = Frequency.allocate()
-      assert :stop = Frequency.stop()
       :ok
     end
 
@@ -54,9 +58,7 @@ defmodule FrequencyTest do
     Frequencies module.
     """
     test "List available frequencies" do
-      Frequency.start()
       assert [10, 11, 12, 13, 14, 15] == Frequency.list_available()
-      assert :stop = Frequency.stop()
       :ok
     end
 
@@ -66,14 +68,12 @@ defmodule FrequencyTest do
     allocate only one item. Then two and receive the list.
     """
     test "List allocated frequencies" do
-      Frequency.start()
       pid = self()
       assert [] == Frequency.list_allocated()
       assert {:ok, 10} = Frequency.allocate()
       assert [{10, ^pid}] = Frequency.list_allocated()
       assert {:ok, 11} = Frequency.allocate()
       assert [{11, ^pid}, {10, ^pid}] = Frequency.list_allocated()
-      assert :stop = Frequency.stop()
       :ok
     end
   end
