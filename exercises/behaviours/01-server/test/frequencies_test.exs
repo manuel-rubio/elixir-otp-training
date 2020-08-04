@@ -16,7 +16,7 @@ defmodule FrequencyTest do
   describe "Frequency tests" do
     setup do
       Frequency.start()
-      on_exit(fn _ ->
+      on_exit(:stop_frequency, fn ->
         :stop = Frequency.stop()
       end)
       :ok
