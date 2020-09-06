@@ -37,12 +37,15 @@ defmodule Server do
         {state, reply} = apply(module, :handle, [message, state])
         send(pid, {:reply, reply})
         loop(module, state)
-      :stop -> :ok
+
+      :stop ->
+        :ok
     end
   end
 
   def call(pid, message) do
     send(pid, {:request, self(), message})
+
     receive do
       {:reply, reply} -> reply
     end

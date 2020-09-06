@@ -16,9 +16,11 @@ defmodule FrequencyTest do
   describe "Frequency tests" do
     setup do
       Frequency.start()
+
       on_exit(:stop_frequency, fn ->
         :stop = Frequency.stop()
       end)
+
       :ok
     end
 
@@ -31,6 +33,7 @@ defmodule FrequencyTest do
       for i <- 10..15 do
         assert {:ok, i} == Frequency.allocate()
       end
+
       assert {:error, _} = Frequency.allocate()
       :ok
     end
@@ -45,9 +48,11 @@ defmodule FrequencyTest do
       for i <- 1..5 do
         assert :ok == Frequency.deallocate(i)
       end
+
       for i <- 5..1 do
         assert {:ok, i} == Frequency.allocate()
       end
+
       assert {:ok, 10} = Frequency.allocate()
       :ok
     end

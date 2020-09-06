@@ -17,7 +17,6 @@ defmodule Frequency do
   @spec start() :: {:ok, pid}
   def start(), do: Server.start(__MODULE__, [])
 
-
   @doc """
   Stop the server. It uses Server.stop providing the specific code.
   """
@@ -65,14 +64,17 @@ defmodule Frequency do
     # implement this performing the frequencies allocation
     {frequencies, {:error, :not_implemented}}
   end
+
   def handle({:deallocate, freq}, frequencies) do
     # implement this performing the frequencies deallocation
     {frequencies, {:error, :not_implemented}}
   end
+
   def handle(:list_allocated, {_, allocated} = frequencies) do
     # implement this performing the return of the allocated info
     {frequencies, {:error, :not_implemented}}
   end
+
   def handle(:list_available, {available, _} = frequencies) do
     # implement this performing the return of the available info
     {frequencies, {:error, :not_implemented}}
