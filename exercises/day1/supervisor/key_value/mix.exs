@@ -1,13 +1,14 @@
-defmodule Frequency.MixProject do
+defmodule KeyValue.MixProject do
   use Mix.Project
 
   def project do
     [
-      app: :frequency,
+      app: :key_value,
       version: "0.1.0",
       elixir: "~> 1.9",
       start_permanent: Mix.env() == :prod,
-      deps: deps()
+      deps: deps(),
+      aliases: aliases()
     ]
   end
 
@@ -15,7 +16,7 @@ defmodule Frequency.MixProject do
   def application do
     [
       extra_applications: [:logger],
-      mod: {Frequency.Application, []}
+      mod: {KeyValue.Application, []}
     ]
   end
 
@@ -25,5 +26,9 @@ defmodule Frequency.MixProject do
       # {:dep_from_hexpm, "~> 0.3.0"},
       # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"}
     ]
+  end
+
+  defp aliases do
+    [test: "test --no-start"]
   end
 end
