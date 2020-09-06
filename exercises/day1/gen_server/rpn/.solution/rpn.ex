@@ -54,7 +54,7 @@ defmodule Rpn do
   end
 
   def handle_call({:push_token, :'/'}, _from, [0 | _] = stack) do
-    {:stop, :division_by_zero, stack}
+    {:stop, :division_by_zero, {:error, :edivzero}, stack}
   end
 
   def handle_call({:push_token, :'/'}, _from, [a, b | stack]) do
