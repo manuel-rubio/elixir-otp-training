@@ -3,12 +3,12 @@ defmodule RpnTest do
   doctest Rpn
 
   defp start_rpc(context) do
-    {:ok, pid} = Rpn.start_link()
+    {:ok, pid} = Rpn.start()
     Map.put(context, :rpc_pid, pid)
   end
 
   test "life-cycle" do
-    assert {:ok, pid} = Rpn.start_link()
+    assert {:ok, pid} = Rpn.start()
     assert is_pid(pid)
     assert Process.alive?(pid)
     assert :ok = Rpn.stop(pid)
