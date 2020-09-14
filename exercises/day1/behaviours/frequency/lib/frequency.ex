@@ -8,6 +8,18 @@ defmodule Frequency do
 
   @type freq :: non_neg_integer
 
+  defmodule Data do
+    @type t() :: %Data{
+      available: [Frequency.freq()],
+      allocated: [{Frequency.freq(), pid()}]
+    }
+
+    defstruct [
+      available: [],
+      allocated: []
+    ]
+  end
+
   # the hardcoded data:
   @frequencies [10, 11, 12, 13, 14, 15]
 
@@ -55,28 +67,28 @@ defmodule Frequency do
   @impl Server
   @doc false
   def init(_args) do
-    {@frequencies, []}
+    %Data{available: @frequencies}
   end
 
   @impl Server
   @doc false
-  def handle({:allocate, pid}, frequencies) do
+  def handle({:allocate, pid}, data) do
     # implement this performing the frequencies allocation
-    {frequencies, {:error, :not_implemented}}
+    {data, {:error, :not_implemented}}
   end
 
-  def handle({:deallocate, freq}, frequencies) do
+  def handle({:deallocate, freq}, data) do
     # implement this performing the frequencies deallocation
-    {frequencies, {:error, :not_implemented}}
+    {data, {:error, :not_implemented}}
   end
 
-  def handle(:list_allocated, {_, allocated} = frequencies) do
+  def handle(:list_allocated, %Data{allocated: allocated} = data) do
     # implement this performing the return of the allocated info
-    {frequencies, {:error, :not_implemented}}
+    {data, {:error, :not_implemented}}
   end
 
-  def handle(:list_available, {available, _} = frequencies) do
+  def handle(:list_available, %Data{available: available} = data) do
     # implement this performing the return of the available info
-    {frequencies, {:error, :not_implemented}}
+    {data, {:error, :not_implemented}}
   end
 end
