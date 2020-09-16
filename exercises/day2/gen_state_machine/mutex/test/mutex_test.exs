@@ -10,7 +10,6 @@ defmodule MutexTest do
     refute Process.alive?(pid)
   end
 
-  @tag skip: true
   test "should block until mutex is free" do
     {:ok, pid} = Mutex.start([])
     parent = self()
@@ -28,7 +27,6 @@ defmodule MutexTest do
     assert_receive :free
   end
 
-  @tag skip: true
   test "the mutex should unblock clients in the order they arrived" do
     {:ok, pid} = Mutex.start([])
     parent = self()
@@ -60,13 +58,11 @@ defmodule MutexTest do
     assert [:a, :b, :c] == [first, second, third]
   end
 
-  @tag skip: true
   test "should return an error to the client if the mutex is signaled while free" do
     {:ok, pid} = Mutex.start([])
     assert {:error, :unexpected_signal} = Mutex.signal(pid)
   end
 
-  @tag skip: true
   test "life-cycle" do
     assert {:ok, pid} = Mutex.start([])
     assert Process.alive?(pid)
