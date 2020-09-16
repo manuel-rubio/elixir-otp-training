@@ -43,12 +43,12 @@ defmodule RpnTest do
     end
 
     test "centigrades to farenheit (40ºC -> 104ºF)", %{rpc_pid: pid} do
+      {:ok, 32} = Rpn.push(pid, 32)
       {:ok, 9} = Rpn.push(pid, 9)
       {:ok, 40} = Rpn.push(pid, 40)
       {:ok, 360} = Rpn.push(pid, :*)
       {:ok, 5} = Rpn.push(pid, 5)
       {:ok, 72} = Rpn.push(pid, :/)
-      {:ok, 32} = Rpn.push(pid, 32)
       assert {:ok, 104} = Rpn.push(pid, :+)
     end
 
