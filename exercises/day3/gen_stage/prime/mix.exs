@@ -6,7 +6,7 @@ defmodule Prime.MixProject do
       app: :prime,
       version: "0.1.0",
       elixir: "~> 1.9",
-      elixirc_paths: elixirc_paths(Mix.env),
+      elixirc_paths: elixirc_paths(Mix.env()),
       build_embedded: Mix.env() == :prod,
       start_permanent: Mix.env() == :prod,
       deps: deps()

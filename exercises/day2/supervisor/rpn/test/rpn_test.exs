@@ -58,7 +58,7 @@ defmodule RpnTest do
       {:ok, 1} = Rpn.push(pid, 1)
       {:ok, 0} = Rpn.push(pid, 0)
       assert {:error, :edivzero} = Rpn.push(pid, :/)
-      assert_receive {:"DOWN", _ref, :process, _pid, :division_by_zero}
+      assert_receive {:DOWN, _ref, :process, _pid, :division_by_zero}
     end
   end
 end

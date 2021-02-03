@@ -3,7 +3,7 @@ defmodule DatabaseTest do
   doctest Database
 
   setup context do
-    {:ok, pid} = Database.start([name: context.test])
+    {:ok, pid} = Database.start(name: context.test)
     Map.put(context, :pid, pid)
   end
 

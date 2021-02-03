@@ -10,6 +10,7 @@ defmodule Syslog.Console do
   def handle_events([event], _from, state) do
     IO.ANSI.format([:inverse, "CONSUME", :reset, "\n", event])
     |> IO.puts()
+
     {:noreply, [], state}
   end
 end

@@ -11,6 +11,7 @@ defmodule Rpn.ApplicationTest do
     setup do
       Application.ensure_all_started(:rpn)
       :ok
+
       on_exit(:teardown, fn ->
         Application.stop(:rpn)
         Application.unload(:rpn)
@@ -19,11 +20,10 @@ defmodule Rpn.ApplicationTest do
 
     test "get children" do
       assert [
-        {:rpn3, _pid1, :worker, [Rpn]},
-        {:rpn2, _pid2, :worker, [Rpn]},
-        {:rpn1, _pid3, :worker, [Rpn]}
-      ] = Supervisor.which_children(Rpn.Supervisor)
+               {:rpn3, _pid1, :worker, [Rpn]},
+               {:rpn2, _pid2, :worker, [Rpn]},
+               {:rpn1, _pid3, :worker, [Rpn]}
+             ] = Supervisor.which_children(Rpn.Supervisor)
     end
   end
 end
-

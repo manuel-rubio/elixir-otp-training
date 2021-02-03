@@ -10,10 +10,18 @@ defmodule Syslog.Server do
   @impl GenStage
   def handle_info({:udp, _socket, ip, port, packet}, state) do
     IO.ANSI.format([
-      :inverse, "RECV", :blue, " #{inspect ip}", :green, " #{port}",
-      :reset, "\n", packet
+      :inverse,
+      "RECV",
+      :blue,
+      " #{inspect(ip)}",
+      :green,
+      " #{port}",
+      :reset,
+      "\n",
+      packet
     ])
     |> IO.puts()
+
     {:noreply, [packet], state}
   end
 

@@ -9,8 +9,10 @@ defmodule Prime.Consumer do
   @impl GenStage
   def handle_events(events, from, color) do
     event = Enum.join(events, ", ")
-    IO.ANSI.format([color, "#{inspect from}:", :reset, " #{event}"])
-    |>IO.puts()
+
+    IO.ANSI.format([color, "#{inspect(from)}:", :reset, " #{event}"])
+    |> IO.puts()
+
     Process.sleep(1_000)
 
     {:noreply, [], color}

@@ -10,14 +10,12 @@ defmodule Frequency do
 
   defmodule Data do
     @type t() :: %Data{
-      available: [Frequency.freq()],
-      allocated: [{Frequency.freq(), pid()}]
-    }
+            available: [Frequency.freq()],
+            allocated: [{Frequency.freq(), pid()}]
+          }
 
-    defstruct [
-      available: [],
-      allocated: []
-    ]
+    defstruct available: [],
+              allocated: []
   end
 
   # the hardcoded data:

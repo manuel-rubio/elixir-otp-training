@@ -16,10 +16,10 @@ defmodule MutexTest do
 
     spawn_link(fn ->
       Mutex.await(pid)
-      send parent, :ready
+      send(parent, :ready)
       Process.sleep(100)
       Mutex.signal(pid)
-      send parent, :free
+      send(parent, :free)
     end)
 
     assert_receive(:ready)
@@ -31,13 +31,14 @@ defmodule MutexTest do
     {:ok, pid} = Mutex.start([])
     parent = self()
 
-    spawn_helper = fn (name) ->
+    spawn_helper = fn name ->
       spawn_link(fn ->
-        send parent, {:ready, name}
+        send(parent, {:ready, name})
         assert :ok = Mutex.await(pid)
-        send parent, {:got_the_lock, name}
+        send(parent, {:got_the_lock, name})
         assert :ok = Mutex.signal(pid)
       end)
+
       assert_receive {:ready, ^name}
     end
 

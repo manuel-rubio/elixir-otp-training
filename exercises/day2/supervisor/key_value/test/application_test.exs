@@ -11,6 +11,7 @@ defmodule KeyValue.ApplicationTest do
     setup do
       Application.ensure_all_started(:key_value)
       :ok
+
       on_exit(:teardown, fn ->
         Application.stop(:key_value)
         Application.unload(:key_value)

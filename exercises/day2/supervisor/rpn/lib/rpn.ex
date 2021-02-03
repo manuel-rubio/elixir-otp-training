@@ -35,29 +35,29 @@ defmodule Rpn do
     {:reply, reply, [n | stack]}
   end
 
-  def handle_call({:push_token, :'+'}, _from, [a, b | stack]) do
+  def handle_call({:push_token, :+}, _from, [a, b | stack]) do
     result = a + b
     reply = {:ok, result}
     {:reply, reply, [result | stack]}
   end
 
-  def handle_call({:push_token, :'-'}, _from, [a, b | stack]) do
+  def handle_call({:push_token, :-}, _from, [a, b | stack]) do
     result = b - a
     reply = {:ok, result}
     {:reply, reply, [result | stack]}
   end
 
-  def handle_call({:push_token, :'*'}, _from, [a, b | stack]) do
+  def handle_call({:push_token, :*}, _from, [a, b | stack]) do
     result = a * b
     reply = {:ok, result}
     {:reply, reply, [result | stack]}
   end
 
-  def handle_call({:push_token, :'/'}, _from, [0 | _] = stack) do
+  def handle_call({:push_token, :/}, _from, [0 | _] = stack) do
     {:stop, :division_by_zero, {:error, :edivzero}, stack}
   end
 
-  def handle_call({:push_token, :'/'}, _from, [a, b | stack]) do
+  def handle_call({:push_token, :/}, _from, [a, b | stack]) do
     result = div(b, a)
     reply = {:ok, result}
     {:reply, reply, [result | stack]}
